@@ -1,0 +1,11 @@
+numpy
+pandas
+supabase
+torch
+torchvision
+fastapi
+uvicorn
+scikit-learn
+facenet-pytorch
+python-dotenv
+python-multipart
