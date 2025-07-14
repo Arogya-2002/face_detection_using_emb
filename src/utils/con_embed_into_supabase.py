@@ -6,19 +6,22 @@ from io import BytesIO
 import requests
 import torch
 from src.utils.models import resnet, mtcnn, device
-from supabase import create_client, Client
+from supabase import create_client, Client, ClientOptions
 import time
 from src.constants import *
 from src.exceptions import CustomException
 from src.logger import logging
 import sys
 
+
 # ------------------ Supabase Setup ------------------
 try:
-    supabase: Client = create_client(FSUPABASE_URL, FSUPABASE_KEY)
+    
+    options=ClientOptions(schema="dc")
+    supabase: Client = create_client(FSUPABASE_URL, FSUPABASE_KEY,options=options)
     logging.info("Connected to Supabase successfully.")
 except Exception as e:
-    raise CustomException(f"Failed to create Supabase client: {e}", sys)
+    raise CustomException(e,sys)
 
 # ------------------ Track Seen Images ------------------
 seen_images = {}
@@ -28,13 +31,12 @@ def download_image(image_path):
     try:
         url = FIMAGE_URL_PREFIX + image_path
         response = requests.get(url, timeout=10)
-        response.raise_for_status()
         img = Image.open(BytesIO(response.content)).convert("RGB")
         logging.info(f"Downloaded image: {image_path}")
         return img
     except Exception as e:
         logging.error(f"Could not download image {image_path}: {e}")
-        raise CustomException(f"Image download failed for {image_path}", e)
+        raise CustomException(e,sys)
 
 # ------------------ Function: Get Embedding ------------------
 def get_embedding(img, face_index):
@@ -51,7 +53,7 @@ def get_embedding(img, face_index):
         return emb.tolist()
     except Exception as e:
         logging.error(f"Embedding generation failed: {e}")
-        raise CustomException("Failed to compute face embedding", e)
+        raise CustomException(e,sys)
 
 # ------------------ Function: Fetch Batch ------------------
 def fetch_batch_from_supabase(offset, batch_size):
@@ -64,7 +66,7 @@ def fetch_batch_from_supabase(offset, batch_size):
         return response.data
     except Exception as e:
         logging.error(f"Failed to fetch data from Supabase: {e}")
-        raise CustomException("Data fetch error", e)
+        raise CustomException(e,sys)
 
 # ------------------ Function: Update Embedding ------------------
 def update_embedding_in_supabase(record_id, embedding):
@@ -76,7 +78,7 @@ def update_embedding_in_supabase(record_id, embedding):
         logging.info(f"Updated embedding for ID: {record_id}")
     except Exception as e:
         logging.error(f"Failed to update embedding for ID: {record_id} - {e}")
-        raise CustomException(f"Supabase update failed for ID: {record_id}", e)
+        raise CustomException(e,sys)
 
 # ------------------ Function: Process One Row ------------------
 def process_row(row):
@@ -132,6 +134,8 @@ def run_embedding_pipeline(batch_size=1000):
         logging.info(f"[DONE] Processed {total_processed} records.")
     except Exception as e:
         logging.critical(f"Pipeline execution failed: {e}")
-        raise CustomException("Embedding pipeline failed", e)
+        raise CustomException(e,sys)
 
 
+# if __name__ == "__main__":
+#     run_embedding_pipeline(batch_size=1000)
